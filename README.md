@@ -25,12 +25,14 @@
 - [SWOT-анализ](#swot-анализ)
 - [Быстрый старт](#быстрый-старт)
   - [Локально (Python)](#локально-python)
+  - [Real-time (RTSP)](#real-time-rtsp)
 - [Использование](#использование)
   - [Настройка виртуальных линий](#настройка-виртуальных-линий)
   - [Форматы отчётов](#форматы-отчётов)
 - [Структура проекта](#структура-проекта)
 - [Архитектура](#архитектура)
 - [Требования](#требования)
+- [Известные ограничения](#известные-ограничения)
 - [Тесты](#тесты)
 - [Как контрибьютить](#как-контрибьютить)
 - [Авторы](#авторы)
@@ -170,6 +172,70 @@ python pipeline.py
 
 Результаты — в `output/`.
 
+### Real-time (RTSP)
+
+Пайплайн умеет читать не только файлы, но и RTSP-потоки.
+Для разработки и демо есть утилита, публикующая видеофайл как RTSP.
+
+#### 1. Установить dev-зависимости
+
+- **ffmpeg** в `PATH` — используется для публикации видео.
+- **[MediaMTX](https://github.com/bluenviron/mediamtx/releases)** — лёгкий RTSP-сервер (распаковать и использовать вместе с конфигом).
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install -y ffmpeg
+# macOS
+#brew install ffmpeg
+
+# MediaMTX: скачать бинарь под свою платформу
+wget https://github.com/bluenviron/mediamtx/releases/download/v1.9.3/mediamtx_v1.9.3_linux_amd64.tar.gz
+tar xzf mediamtx_v1.9.3_linux_amd64.tar.gz
+```
+
+#### 2. Запустить RTSP-сервер
+
+```bash
+# Терминал 1
+./mediamtx
+```
+
+#### 3. Опубликовать видео в RTSP
+
+```bash
+# Терминал 2
+./scripts/serve_rtsp.sh input/sample.mp4 --loop --port 8554
+# Флаги: --loop, --fps, --bitrate, --port, --host, --path.
+```
+
+#### 4. Проверить, что поток читается
+
+```bash
+# Терминал 3
+ffprobe -rtsp_transport tcp rtsp://localhost:8554/live
+```
+
+#### 5. Прогнать pipeline.py на RTSP
+
+В config.py временно:
+
+```python
+INPUT_VIDEO = "rtsp://localhost:8554/live"
+```
+
+```bash
+python pipeline.py
+```
+
+Что увидите:
+
+HUD печатает Frame N (live) — счётчик кадров не имеет верхней границы;
+
+если публикация прервётся, RTSPSource сам переподключится
+с экспоненциальным backoff (в лог пойдут RTSP stale... reconnect);
+
+остановка — Ctrl+C (мягкая, через stop_event).
+
 ---
 
 ## Использование
@@ -224,11 +290,17 @@ frame_idx,timestamp,track_id,line_id,direction,px,py
 .
 ├── pipeline.py              # точка входа
 ├── config.py                # все настройки
+├── sources/                 # источники видео
+│   ├── base.py              # Protocol VideoSource
+│   ├── file_source.py
+│   ├── mot17_source.py      # Mot17Source dataset
+│   ├── rtsp_source.py       # RTSPSource (reconnect, backoff, stale-check)
+│   └── factory.py
 ├── counting/                # логика подсчёта пересечений
-│   ├── counter.py           # LineCounter + VirtualLine
-│   ├── factory.py           # build_counter из конфига
-│   ├── geometry.py          # side_of_line, segments_intersect
-│   └── types.py             # CountingStats, LineCrossingEvent
+│   ├── counter.py
+│   ├── factory.py
+│   ├── geometry.py
+│   └── types.py
 ├── tracking/
 │   └── types.py             # Track — контракт между детекцией и подсчётом
 ├── reporting/
@@ -237,10 +309,10 @@ frame_idx,timestamp,track_id,line_id,direction,px,py
 │   ├── video_writer.py      # AnnotatedVideoWriter
 │   └── visualizer.py        # FrameVisualizer
 ├── tools/
-│   └── mot17_source.py      # адаптер для MOT17-последовательности
+│   ├── video_to_rtsp.py     # dev-утилита: файл → RTSP (ffmpeg)
+│   └── mot17_source.py      # DEPRECATED: переехал в sources/mot17_source.py адаптер для MOT17-последовательности
 ├── scripts/
-│   ├── download_models.sh
-│   └── run_demo.sh
+│   └── serve_rtsp.sh
 ├── input/                   # сюда класть видео
 ├── output/                  # сюда пишутся результаты
 ├── models/                  # сюда скачиваются веса YOLO
@@ -310,6 +382,29 @@ opencv-python>=4.9.0
 numpy>=1.26
 matplotlib>=3.8
 ```
+
+---
+
+## Известные ограничения
+
+- **`OPENCV_FFMPEG_CAPTURE_OPTIONS` — глобальная env-переменная.**
+  `RTSPSource` выставляет её (TCP-транспорт + `stimeout`) перед созданием
+  `cv2.VideoCapture`. Это влияет на все `cv2.VideoCapture` в процессе.
+  Сейчас не проблема (один RTSP на процесс), но при переходе на
+  многопоточный Stream Manager с несколькими RTSP потребуется замена
+  на FFmpeg-pipeline-строку.
+
+- **`pipeline.py` на live-источнике не завершается сам.**
+  Остановка — `Ctrl+C` (через `SIGINT`-handler выставляется `stop_event`).
+  Управляемая остановка появится в веб-бэкенде.
+
+- **Координаты линий — в пикселях исходного кадра.**
+  При смене разрешения видео конфиг линий нужно пересчитывать вручную.
+  В веб-редакторе это будет автоматизировано.
+
+- **Тесты отсутствуют.**
+  Пока проект в демо-статусе, проверка — ручная, на коротких фрагментах
+  с разными ракурсами.
 
 ---
 

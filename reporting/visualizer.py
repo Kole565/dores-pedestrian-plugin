@@ -113,8 +113,13 @@ class FrameVisualizer:
         cv2.rectangle(overlay, (0, 0), (w, 40), self.cfg.hud_bg_color, -1)
         cv2.addWeighted(overlay, 0.5, canvas, 0.5, 0, canvas)
 
+        if total_frames and total_frames > 0:
+            frame_part = f"Frame {frame_idx}/{total_frames}"
+        else:
+            frame_part = f"Frame {frame_idx} (live)"
+
         text = (
-            f"Frame {frame_idx}/{total_frames}  |  "
+            f"{frame_part}  |  "
             f"FPS: {fps_proc:.1f}  |  Active tracks: {active_tracks}"
         )
         cv2.putText(canvas, text, (10, 27), cv2.FONT_HERSHEY_SIMPLEX,

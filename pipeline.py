@@ -8,6 +8,9 @@ import sys
 import time
 from pathlib import Path
 
+import signal
+import threading
+
 import cv2
 from ultralytics import YOLO
 
@@ -23,28 +26,38 @@ from reporting import (
     write_json,
 )
 from tracking.types import Track
+from sources.factory import open_source
 
 from tools.mot17_source import Mot17Sequence
+
+
+def _install_signal_handlers(stop_event: threading.Event) -> None:
+    """SIGINT/SIGTERM → выставить stop_event (мягкая остановка)."""
+    def _handler(signum, _frame):
+        print(f"\n[INFO] Получен сигнал {signum}, останавливаемся...")
+        stop_event.set()
+
+    signal.signal(signal.SIGINT, _handler)
+    signal.signal(signal.SIGTERM, _handler)
 
 # ---------------------------------------------------------------------------
 # Ввод / вывод видео
 # ---------------------------------------------------------------------------
 
 def open_video(path: str):
-    p = Path(path)
-    if p.is_dir() and (p / "seqinfo.ini").exists():
-        cap = Mot17Sequence(str(p))
-    else:
-        cap = cv2.VideoCapture(str(path))
-    if not cap.isOpened():
-        raise RuntimeError(f"Не удалось открыть источник: {path}")
+    """Тонкая обёртка над open_source для обратной совместимости.
+
+    Возвращает (source, meta) — source удовлетворяет VideoSource.
+    """
+    src = open_source(path, kind="auto")
     meta = {
-        "width":  int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-        "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-        "fps":    cap.get(cv2.CAP_PROP_FPS) or config.OUTPUT_FPS_FALLBACK,
-        "frame_count": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
+        "width":  src.width,
+        "height": src.height,
+        "fps":    src.fps or config.OUTPUT_FPS_FALLBACK,
+        "frame_count": src.frame_count,
+        "is_live": src.is_live,
     }
-    return cap, meta
+    return src, meta
 
 def results_to_tracks(results) -> list[Track]:
     """Адаптер Ultralytics → Track (без изменений)."""
@@ -69,6 +82,9 @@ def results_to_tracks(results) -> list[Track]:
 # ---------------------------------------------------------------------------
 
 def main():
+    stop_event = threading.Event()
+    _install_signal_handlers(stop_event)
+
     print("[INFO] Загрузка модели YOLO...")
     model = YOLO(config.MODEL_PATH)
 
@@ -96,15 +112,18 @@ def main():
     t_start = time.time()
     fps_proc = 0.0
 
-    with AnnotatedVideoWriter(
-        config.OUTPUT_VIDEO, meta["fps"],
+
+    with AnnotatedVideoWriter(config.OUTPUT_VIDEO, meta["fps"],
         (meta["width"], meta["height"]),
-        fourcc=config.OUTPUT_CODEC,
-    ) as writer:
-        while True:
+        fourcc=config.OUTPUT_CODEC,) as writer:
+        while not stop_event.is_set():
             ok, frame = cap.read()
             if not ok:
+                if meta.get("is_live"): # Wait for frame if network is unstable
+                    time.sleep(0.01)
+                    continue
                 break
+
             frame_idx += 1
             timestamp = frame_idx / meta["fps"]
 
@@ -170,8 +189,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n[INFO] Прервано пользователем.")
-        sys.exit(0)
+    main()
