@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Данные и артефакты
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
+models/*
+!models/.gitkeep
+
+# Веса моделей (скачиваются скриптом)
+*.pt
+*.onnx
+*.engine
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
