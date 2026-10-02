@@ -19,5 +19,26 @@
       "intensity_png": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/intensity.png"
     },
     "error_message": null
+  },
+  "dda9102682d2": {
+    "id": "dda9102682d2",
+    "status": "done",
+    "created_at": "2026-10-02T22:59:56.355907",
+    "started_at": "2026-10-02T22:59:56.356353",
+    "finished_at": "2026-10-02T23:00:22.426501",
+    "input_filename": "sample.mp4",
+    "lines_config_id": "6d5f882aea5e",
+    "progress": {
+      "frames_done": 600,
+      "frames_total": 600,
+      "fps_avg": 23.41
+    },
+    "result": {
+      "output_video": "/home/kole/dev/dores_integration/data/results/dda9102682d2/annotated.mp4",
+      "report_json": "/home/kole/dev/dores_integration/data/results/dda9102682d2/report.json",
+      "events_csv": "/home/kole/dev/dores_integration/data/results/dda9102682d2/events.csv",
+      "intensity_png": "/home/kole/dev/dores_integration/data/results/dda9102682d2/intensity.png"
+    },
+    "error_message": null
   }
 }

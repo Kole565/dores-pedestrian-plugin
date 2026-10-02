@@ -31,6 +31,7 @@ class Settings:
     uploads_dir: Path = field(init=False)
     results_dir: Path = field(init=False)
     jobs_json: Path = field(init=False)
+    lines_json: Path = field(init=False)
 
     # --- лимиты ---
     max_upload_bytes: int = field(
@@ -56,11 +57,14 @@ class Settings:
     )
     debug: bool = field(default_factory=lambda: _env_bool("APP_DEBUG", False))
 
+    lines_json: Path = field(init=False)
+
     def __post_init__(self) -> None:
         self.data_dir = self.base_dir / "data"
         self.uploads_dir = self.data_dir / "uploads"
         self.results_dir = self.data_dir / "results"
         self.jobs_json = self.data_dir / "jobs.json"
+        self.lines_json = self.data_dir / "lines.json"
 
         for p in (self.data_dir, self.uploads_dir, self.results_dir):
             p.mkdir(parents=True, exist_ok=True)

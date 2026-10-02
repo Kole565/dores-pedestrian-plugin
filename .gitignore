@@ -15,6 +15,8 @@ output/*
 !output/.gitkeep
 models/*
 !models/.gitkeep
+data/*
+!data/.gitkeep
 
 # Веса моделей (скачиваются скриптом)
 *.pt

@@ -25,7 +25,6 @@ from sources.factory import open_source
 from .schemas import JobInfo, JobProgress, JobResult, JobStatus
 from .settings import settings
 
-
 # ---------------------------------------------------------------------------
 # Worker: выполняется в отдельном процессе
 # ---------------------------------------------------------------------------

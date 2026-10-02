@@ -13,12 +13,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from ..deps import get_runner, get_store
+from ..deps import get_lines_store, get_runner, get_store
+from ..lines_store import LinesStore
+
 from ..jobs import JobRunner
 from ..schemas import (
     JobInfo,
     JobListResponse,
     JobStatus,
+    LinesConfig,
 )
 from ..settings import settings
 from ..store import JobStore
@@ -70,7 +73,9 @@ async def create_job(
     )] = None,
     store: JobStore = Depends(get_store),
     runner: JobRunner = Depends(get_runner),
+    lines_store: LinesStore = Depends(get_lines_store),
 ) -> JobInfo:
+
     """Загрузить видео и поставить задачу в очередь.
 
     Приоритет конфига линий:
@@ -112,7 +117,7 @@ async def create_job(
     resolved_lines = _resolve_lines_config(
         inline_json=lines_config,
         config_id=lines_config_id,
-        store=store,
+        lines_store=lines_store,
     )
 
     # --- JobInfo ---
@@ -148,14 +153,38 @@ async def create_job(
     return job
 
 
+def _lines_config_to_pipeline_format(cfg: LinesConfig) -> dict:
+    """LinesConfig (API) → {'VIRTUAL_LINES': [{'line_id':..., 'coords': (...)}, ...]}.
+
+    Pipeline ожидает именно такой формат (как в core/config.py).
+    """
+    return {
+        "VIRTUAL_LINES": [
+            {
+                "line_id": ln.line_id,
+                "coords": tuple(ln.coords),
+                "direction_pos_to_neg": ln.direction_pos_to_neg,
+                "direction_neg_to_pos": ln.direction_neg_to_pos,
+                "use_point": ln.use_point,
+            }
+            for ln in cfg.lines
+        ]
+    }
+
 def _resolve_lines_config(
     *,
     inline_json: str | None,
     config_id: str | None,
-    store: JobStore,
+    lines_store: LinesStore,
 ) -> dict:
-    """Определяет итоговый конфиг линий для задачи."""
-    # 1. inline JSON
+    """Определяет итоговый конфиг линий для задачи.
+
+    Приоритет:
+      1. inline_json (JSON-строка в multipart)
+      2. config_id  (CRUD /api/lines)
+      3. дефолт     (core.config.DEFAULT_VIRTUAL_LINES)
+    """
+    # 1. inline
     if inline_json:
         try:
             data = json.loads(inline_json)
@@ -171,17 +200,19 @@ def _resolve_lines_config(
             )
         return data
 
-    # 2. config_id — этап D; пока заглушка
+    # 2. config_id
     if config_id:
-        raise HTTPException(
-            status_code=501,
-            detail="lines_config_id пока не поддержан (этап D)",
-        )
+        cfg = lines_store.get(config_id)
+        if cfg is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"lines_config_id={config_id} не найден",
+            )
+        return _lines_config_to_pipeline_format(cfg)
 
     # 3. дефолт
     from core import config as core_config
     return {"VIRTUAL_LINES": core_config.DEFAULT_VIRTUAL_LINES}
-
 
 # ---------------------------------------------------------------------------
 # GET /api/jobs — список

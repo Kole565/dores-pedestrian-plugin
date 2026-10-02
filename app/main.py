@@ -12,8 +12,11 @@ from .schemas import HealthResponse, LimitsResponse
 from .settings import settings
 from .store import JobStore
 
+from .lines_store import LinesStore
+
 # Роутеры по этапам
 from .routers import jobs as jobs_router
+from .routers import lines as lines_router
 
 
 logging.basicConfig(
@@ -22,10 +25,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("app")
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- startup ---
     logger.info("Старт backend. data_dir=%s", settings.data_dir)
 
     store = JobStore(settings.jobs_json)
@@ -33,14 +34,21 @@ async def lifespan(app: FastAPI):
     if zombies:
         logger.warning("Помечено %d 'зомби'-задач как failed", zombies)
 
+    lines_store = LinesStore(settings.lines_json)
+
+    # дефолтный конфиг при первом старте
+    from core import config as core_config
+    default_cfg = lines_store.ensure_default(core_config.DEFAULT_VIRTUAL_LINES)
+    logger.info("Default lines config: id=%s name=%r", default_cfg.id, default_cfg.name)
+
     runner = jobs_module.init_runner(store)
 
     app.state.store = store
+    app.state.lines_store = lines_store
     app.state.runner = runner
 
     yield
 
-    # --- shutdown ---
     logger.info("Остановка backend...")
     jobs_module.shutdown_runner()
 
@@ -74,6 +82,7 @@ def create_app() -> FastAPI:
 
     # --- бизнес-роутеры ---
     app.include_router(jobs_router.router)
+    app.include_router(lines_router.router)
 
     return app
 
