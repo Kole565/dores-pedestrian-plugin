@@ -1,4 +1,3 @@
-# reporting/visualizer.py
 from __future__ import annotations
 
 from collections import defaultdict, deque
@@ -7,7 +6,7 @@ from typing import Iterable
 import cv2
 import numpy as np
 
-from config import VisualConfig
+from core.config import VisualConfig
 from counting.counter import VirtualLine
 from counting.types import CountingStats, LineCrossingEvent
 from tracking.types import Track
