@@ -1,0 +1,56 @@
+{
+  "input_video": "/home/kole/dev/dores_integration/data/uploads/54c55d7e2ae1.mp4",
+  "output_video": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/annotated.mp4",
+  "fps_avg": 24.34,
+  "frames_processed": 600,
+  "duration_sec": 20.0,
+  "bucket_sec": 2,
+  "stats": {
+    "total": 3,
+    "per_line": {
+      "line_main": {
+        "in": 2,
+        "out": 1
+      }
+    }
+  },
+  "per_bucket": {
+    "3": 1,
+    "7": 2
+  },
+  "events": [
+    {
+      "track_id": 20,
+      "frame_idx": 209,
+      "timestamp": 6.967,
+      "direction": "in",
+      "line_id": "line_main",
+      "point": [
+        1066.7,
+        765.7
+      ]
+    },
+    {
+      "track_id": 4,
+      "frame_idx": 440,
+      "timestamp": 14.667,
+      "direction": "in",
+      "line_id": "line_main",
+      "point": [
+        1170.8,
+        794.5
+      ]
+    },
+    {
+      "track_id": 4,
+      "frame_idx": 448,
+      "timestamp": 14.933,
+      "direction": "out",
+      "line_id": "line_main",
+      "point": [
+        1124.2,
+        800.2
+      ]
+    }
+  ]
+}

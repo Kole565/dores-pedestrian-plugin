@@ -1,0 +1,4 @@
+frame_idx,timestamp,track_id,line_id,direction,px,py
+209,6.967,20,line_main,in,1066.7,765.7
+440,14.667,4,line_main,in,1170.8,794.5
+448,14.933,4,line_main,out,1124.2,800.2

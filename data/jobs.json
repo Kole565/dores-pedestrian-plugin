@@ -1,0 +1,23 @@
+{
+  "54c55d7e2ae1": {
+    "id": "54c55d7e2ae1",
+    "status": "done",
+    "created_at": "2026-10-02T22:39:26.538315",
+    "started_at": "2026-10-02T22:39:26.538646",
+    "finished_at": "2026-10-02T22:39:51.705902",
+    "input_filename": "mot17_02.mp4",
+    "lines_config_id": null,
+    "progress": {
+      "frames_done": 600,
+      "frames_total": 600,
+      "fps_avg": 24.34
+    },
+    "result": {
+      "output_video": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/annotated.mp4",
+      "report_json": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/report.json",
+      "events_csv": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/events.csv",
+      "intensity_png": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/intensity.png"
+    },
+    "error_message": null
+  }
+}
