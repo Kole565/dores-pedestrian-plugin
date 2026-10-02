@@ -50,7 +50,7 @@ class RunResult:
 
 # Колбэки для real-time (этап E подключит к WS)
 FrameCallback = Callable[[np.ndarray, int, float], None]
-StatsCallback = Callable[[CountingStats, float, int], None]
+StatsCallback = Callable[[CountingStats, float, int, int], None]
 StopCheck = Callable[[], bool]
 
 
@@ -250,7 +250,7 @@ def run_stream(
 
         now = time.time()
         if on_stats is not None and (now - last_stats_ts) >= stats_every_sec:
-            on_stats(counter.stats, fps_proc, len(tracks))
+            on_stats(counter.stats, fps_proc, len(tracks), frame_idx)
             last_stats_ts = now
 
     return RunResult(

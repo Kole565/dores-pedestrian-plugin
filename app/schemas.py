@@ -130,3 +130,42 @@ class FrameQuery(BaseModel):
     source: FrameSource
     id: str
     t_sec: float = 0.0
+
+
+class StreamStatus(str, Enum):
+    STARTING = "starting"
+    RUNNING = "running"
+    STOPPED = "stopped"
+    ERROR = "error"
+
+
+class StreamStats(BaseModel):
+    total: int = 0
+    per_line: dict[str, dict[str, int]] = Field(default_factory=dict)
+    fps: float = 0.0
+    active_tracks: int = 0
+    frames_processed: int = 0
+
+
+class StreamInfo(BaseModel):
+    id: str
+    status: StreamStatus
+    rtsp_url_masked: str          # пароль замаскирован
+    lines_config_id: Optional[str] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    stopped_at: Optional[datetime] = None
+    last_frame_at: Optional[datetime] = None
+    stats: StreamStats = Field(default_factory=StreamStats)
+    error_message: Optional[str] = None
+
+
+class StreamCreate(BaseModel):
+    rtsp_url: str = Field(min_length=1)
+    lines_config_id: Optional[str] = None
+    # inline для тестов, приоритет как у jobs
+    lines_config: Optional[dict] = None
+
+
+class StreamListResponse(BaseModel):
+    streams: list[StreamInfo]

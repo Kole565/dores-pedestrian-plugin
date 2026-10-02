@@ -9,7 +9,7 @@ import cv2
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
-from ..deps import get_lines_store, get_store
+from ..deps import get_lines_store, get_manager, get_store
 from ..lines_store import LinesStore
 from ..schemas import (
     FrameSource,
@@ -21,6 +21,7 @@ from ..schemas import (
 )
 from ..settings import settings
 from ..store import JobStore
+from ..streams import StreamManager
 
 logger = logging.getLogger("app.lines")
 router = APIRouter(prefix="/api/lines", tags=["lines"])
@@ -39,20 +40,31 @@ def get_frame(
     id: str = Query(..., description="job_id или stream_id"),
     t_sec: float = Query(0.0, ge=0.0, description="Секунда от начала (для upload)"),
     jobs: JobStore = Depends(get_store),
+    manager: StreamManager = Depends(get_manager),
 ) -> Response:
-    """Возвращает JPEG-кадр для редактора линий.
-
-    - source=upload: берём файл из data/uploads/{id}.{ext},
-      читаем кадр на секунде t_sec (по умолчанию — первый).
-    - source=stream: этап E; пока 501.
-
-    Возвращает image/jpeg. В заголовках — X-Frame-Width / X-Frame-Height,
-    чтобы клиент знал реальный размер кадра.
-    """
     if source == FrameSource.STREAM:
-        raise HTTPException(
-            status_code=501,
-            detail="source=stream появится на этапе E",
+        session = manager.get(id)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Stream не найден")
+        jpeg = session.get_snapshot()
+        if jpeg is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Кадр ещё не получен (стрим только запускается?)",
+            )
+        # размер кадра мы не знаем из JPEG без декодирования — декодируем
+        import numpy as np
+        arr = np.frombuffer(jpeg, dtype=np.uint8)
+        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        h, w = (frame.shape[:2] if frame is not None else (0, 0))
+        return Response(
+            content=jpeg,
+            media_type="image/jpeg",
+            headers={
+                "X-Frame-Width": str(w),
+                "X-Frame-Height": str(h),
+                "Cache-Control": "no-store",
+            },
         )
 
     # --- upload ---
