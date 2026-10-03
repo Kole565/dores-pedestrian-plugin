@@ -1,19 +1,17 @@
-
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-orange)
+![Vue 3](https://img.shields.io/badge/Vue-3-42b883)
 
 # DORES Pedestrian Flow — подсчёт пешеходного трафика
 
 Модуль компьютерного зрения для подсчёта пешеходного потока на видео:
 детекция людей, трекинг, подсчёт пересечений виртуальных линий и
-формирование отчётов (JSON/CSV/график).
+формирование отчётов.
 
-> **TL;DR.** Кладёте видео в `input/`, запускаете `make run` —
-> получаете аннотированное видео, JSON-отчёт, CSV событий и график
-> интенсивности в `output/`.
-
-Проект на 100% написан AI.
+> **TL;DR.** Запускаете backend и frontend, открываете
+> `http://localhost:5173` — загружаете видео или подключаете RTSP-поток,
+> получаете счётчики, отчёты и live-статистику.
 
 ---
 
@@ -51,34 +49,35 @@
 - пешеходные переходы — зона повышенного риска;
 - интенсивность пешеходного трафика нужна для городского
   планирования, настройки светофоров, оценки загрузки улиц;
-- готовые open-source решения (YOLO + DeepSORT/ByteTrack) хорошо
-  отработаны, но требуют адаптации под конкретные ракурсы и качество
-  видео ДОРЕС.
+- готовые open-source решения (YOLO + ByteTrack) отработаны, но
+  требуют адаптации под конкретные ракурсы и качество видео.
 
 Проект демонстрирует, что задача **технически реализуема** и может
-быть оформлена как расширение модуля ДОРЕС «Поток» без глубокой
-интеграции с ИТС.
+быть оформлена как расширение модуля ДОРЕС «Поток».
 
 ---
 
 ## Что делает проект
 
-Пайплайн из трёх шагов:
+Считает пешеходный поток через виртуальные линии на видео.
+Работает в двух режимах:
 
-1. **Детекция** — YOLOv8 (Ultralytics), класс `person` (class_id=0).
-2. **Трекинг** — ByteTrack (через Ultralytics `model.track`),
-   присваивает каждому пешеходу стабильный ID между кадрами.
-3. **Подсчёт** — виртуальные линии: если трек пересекает заданный
-   отрезок, счётчик увеличивается; направление определяется знаком
-   векторного произведения.
+- **offline** — обрабатывает загруженный файл, отдаёт аннотированное
+  видео, JSON-отчёт, CSV событий и график интенсивности;
+- **real-time** — подключается к RTSP-потоку, показывает live-вид
+  со счётчиками и обновляет статистику по WebSocket.
 
-Дополнительно:
+Оба режима используют один и тот же пайплайн: YOLOv8 (детекция) →
+ByteTrack (трекинг) → подсчёт пересечений виртуальных линий.
 
-- визуализация (bbox, ID, хвост трека, линия, HUD со счётчиками);
-- аннотированное видео (`mp4`);
-- JSON-отчёт с агрегированной статистикой и событиями;
-- CSV со всеми событиями пересечений;
-- график интенсивности (matplotlib) с адаптивным размером окна.
+Управление — через веб-интерфейс:
+
+- **Обзор** — список offline-задач с прогрессом;
+- **Загрузить видео** — drag&drop, выбор конфига линий, отчёты;
+- **RTSP-поток** — подключение к камере, live-статистика;
+- **Редактор линий** — рисование линий поверх кадра, сохранение конфигов.
+
+Есть CLI-режим (`python pipeline.py`) для пакетной обработки без сервера.
 
 ---
 
@@ -86,21 +85,19 @@
 
 https://github.com/user-attachments/assets/1fe469c5-878e-499f-9707-c0131b8f3bfb
 
-После запуска в `output/` появятся:
+Пример вывода offline-задачи в `output/`:
 
 | Файл | Что внутри |
 |------|------------|
-| `annotated.mp4` | видео с bbox, ID, линией и счётчиками |
-| `report.json`  | агрегаты + список событий |
+| `annotated.mp4` | видео с bbox, ID, линиями и счётчиками |
+| `report.json`  | агрегаты + события |
 | `events.csv`   | построчный лог пересечений |
-| `intensity.png`| столбчатый график интенсивности |
+| `intensity.png`| график интенсивности |
 
-Пример фрагмента `report.json`:
+Фрагмент `report.json`:
 
 ```json
 {
-  "input_video": "input/crosswalk.mp4",
-  "output_video": "output/annotated.mp4",
   "fps_avg": 24.7,
   "frames_processed": 1500,
   "duration_sec": 60.0,
@@ -109,14 +106,7 @@ https://github.com/user-attachments/assets/1fe469c5-878e-499f-9707-c0131b8f3bfb
     "total": 42,
     "per_line": { "line_main": { "in": 25, "out": 17 } }
   },
-  "per_bucket": { "0": 5, "1": 7, "2": 4, "...": 0 },
-  "events": [
-    {
-      "track_id": 12, "frame_idx": 87, "timestamp": 3.48,
-      "direction": "in", "line_id": "line_main",
-      "point": [980.5, 780.2]
-    }
-  ]
+  "per_bucket": { "0": 5, "1": 7, "2": 4 }
 }
 ```
 
@@ -124,19 +114,17 @@ https://github.com/user-attachments/assets/1fe469c5-878e-499f-9707-c0131b8f3bfb
 
 ## Технологический стек
 
-| Слой | Технология | Зачем |
-|------|-----------|-------|
-| Детекция | **YOLOv8** (Ultralytics) | быстрая и точная детекция людей, готовая интеграция с трекерами |
-| Трекинг | **ByteTrack** (`bytetrack.yaml` из Ultralytics) | устойчив к перекрытиям (occlusion) — критично для улицы |
-| Видео I/O | **OpenCV** (`cv2`) | чтение/запись видео, отрисовка |
-| Численные операции | **NumPy** | работа с bbox, координатами |
-| Визуализация графиков | **Matplotlib** | график интенсивности |
-| Отчёты | stdlib `json`, `csv` | без лишних зависимостей |
-| Язык | Python 3.10+ | современный синтаксис, `dataclass`, `from __future__ import annotations` |
-
-**Почему ByteTrack, а не DeepSORT?** ByteTrack лучше держит
-пешеходов при перекрытиях и не требует отдельной модели re-ID —
-меньше зависимостей, проще демо.
+| Слой | Технология |
+|------|-----------|
+| Детекция | YOLOv8 (Ultralytics) |
+| Трекинг | ByteTrack |
+| Видео I/O | OpenCV |
+| Backend | FastAPI + Uvicorn |
+| Frontend | Vue 3 + Vite + Pinia + Vue Router |
+| Хранение | JSON-файлы |
+| Real-time | WebSocket (JPEG-фреймы + статистика) |
+| Отчёты | Matplotlib, stdlib `json`/`csv` |
+| Язык | Python 3.10+, TypeScript |
 
 ---
 
@@ -144,32 +132,51 @@ https://github.com/user-attachments/assets/1fe469c5-878e-499f-9707-c0131b8f3bfb
 
 | | Полезное | Вредное |
 |---|---|---|
-| **Внутреннее** | **Strengths:**<br>• простой и модульный пайплайн<br>• open-source стек без лицензионных ограничений<br>• работает offline, не требует интеграции с ДОРЕС<br>• адаптивные отчёты (JSON/CSV/график) | **Weaknesses:**<br>• точность зависит от качества видео и ракурса<br>• ночью/в сумерках деградация<br>• нет re-ID — при длительных перекрытиях треки теряются |
-| **Внешнее** | **Opportunities:**<br>• расширение на мультикамеру<br>• интеграция с API ДОРЕС<br>• real-time на GPU<br>• подсчёт по зонам и тепловые карты | **Threats:**<br>• конкуренция с коммерческими VMS<br>• приватность (GDPR/152-ФЗ) при обработке видео людей<br>• дрейф качества данных с новых камер |
+| **Внутреннее** | **Strengths:**<br>• offline и real-time в одном сервисе<br>• веб-редактор линий под конкретный ракурс<br>• open-source стек без лицензионных ограничений<br>• адаптивные отчёты (JSON/CSV/график) | **Weaknesses:**<br>• точность зависит от качества видео и ракурса<br>• ночью/в сумерках деградация<br>• нет re-ID — длительные перекрытия теряют треки |
+| **Внешнее** | **Opportunities:**<br>• мультикамера<br>• интеграция с API ДОРЕС<br>• GPU-планировщик, зоны, тепловые карты | **Threats:**<br>• конкуренция с коммерческими VMS<br>• приватность (GDPR/152-ФЗ) при обработке видео людей |
 
 ---
 
 ## Быстрый старт
 
-### Локально (Python)
+### Веб-сервис (рекомендуется)
 
 ```bash
 # 1. Клонировать
 git clone https://github.com/Kole565/dores-pedestrian-plugin.git
 cd dores-pedestrian-plugin
 
-# 2. Виртуальное окружение
+# 2. Виртуальное окружение и зависимости backend
 python3.10 -m venv .venv
-source .venv/bin/activate          # Linux/macOS
-# .venv\Scripts\activate           # Windows
-
-# 3. Зависимости
+source .venv/bin/activate
 pip install -r requirements.txt
 
-# 4. Положить видео в input/
-cp /path/to/your/video.mp4 input/
+# 3. Зависимости frontend
+cd frontend && npm install && cd ..
 
-# 5. Запустить
+# 4. Терминал 1 — backend
+./scripts/run_backend.sh
+# → http://127.0.0.1:8000/docs
+
+# 5. Терминал 2 — frontend
+./scripts/run_frontend.sh
+# → http://localhost:5173
+```
+
+Открой `http://localhost:5173` — оттуда всё управление: загрузка
+видео, RTSP-потоки, редактор линий.
+
+**Системные зависимости:**
+
+- `ffmpeg` в `PATH` — перекодирует результат в web-совместимый
+  H.264, иначе видео в UI не заиграет.
+- **MediaMTX** — опционально, только для демо RTSP-потока.
+
+### CLI (без сервера)
+
+Для пакетной обработки файлов:
+
+```bash
 python pipeline.py --input ./input/video.mp4 --output-dir ./output
 ```
 
@@ -177,68 +184,54 @@ python pipeline.py --input ./input/video.mp4 --output-dir ./output
 
 ### Real-time (RTSP)
 
-Пайплайн умеет читать не только файлы, но и RTSP-потоки.
-Для разработки и демо есть утилита, публикующая видеофайл как RTSP.
-
-#### 1. Установить dev-зависимости
-
-- **ffmpeg** в `PATH` — используется для публикации видео.
-- **[MediaMTX](https://github.com/bluenviron/mediamtx/releases)** — лёгкий RTSP-сервер (распаковать и использовать вместе с конфигом).
+Для проверки real-time без реальной камеры есть утилита,
+публикующая видеофайл как RTSP:
 
 ```bash
-# Debian/Ubuntu
-sudo apt-get install -y ffmpeg
-# macOS
-#brew install ffmpeg
+# 1. Установить MediaMTX (RTSP-сервер) под свою платформу
+#    https://github.com/bluenviron/mediamtx/releases
 
-# MediaMTX: скачать бинарь под свою платформу
-wget https://github.com/bluenviron/mediamtx/releases/download/v1.9.3/mediamtx_v1.9.3_linux_amd64.tar.gz
-tar xzf mediamtx_v1.9.3_linux_amd64.tar.gz
-```
-
-#### 2. Запустить RTSP-сервер
-
-```bash
-# Терминал 1
+# 2. Терминал 1 — запустить RTSP-сервер
 ./mediamtx
-```
 
-#### 3. Опубликовать видео в RTSP
-
-```bash
-# Терминал 2
+# 3. Терминал 2 — опубликовать видео как поток
 ./scripts/serve_rtsp.sh input/sample.mp4 --loop --port 8554
-# Флаги: --loop, --fps, --bitrate, --port, --host, --path.
-```
 
-#### 4. Проверить, что поток читается
-
-```bash
-# Терминал 3
-ffprobe -rtsp_transport tcp rtsp://localhost:8554/live
-```
-
-#### 5. Прогнать pipeline.py на RTSP
-
-В config.py временно:
-
-```python
-INPUT_VIDEO = "rtsp://localhost:8554/live"
-```
-
-```bash
-python pipeline.py
+# 4. Открыть http://localhost:5173/stream
+#    Ввести rtsp://localhost:8554/live
 ```
 
 ---
 
 ## Использование
 
-### Настройка виртуальных линий
+### Offline-обработка
 
-Виртуальные линии позволяют собирать данные о прохождениях людей между определёнными участками местности.
+1. **Загрузить видео** — drag&drop файла, выбрать конфиг линий.
+2. Дождаться завершения (прогресс-бар на странице задачи).
+3. Скачать ZIP с артефактами или открыть их по отдельности.
 
-Всё в `config.py`. Ключевой параметр — `VIRTUAL_LINES`:
+### RTSP-поток
+
+1. Открыть `/stream`, ввести RTSP URL и выбрать конфиг линий.
+2. Нажать «Подключиться» — начнётся live-вид со счётчиками.
+3. Статистика обновляется раз в секунду по WebSocket.
+4. «Остановить» — завершает сессию.
+
+### Редактор линий
+
+1. Создать конфиг в левой панели.
+2. Выбрать подложку: кадр из обработанного видео, свежий snapshot
+   RTSP-потока или загрузить своё видео.
+3. «+ Добавить линию» → два клика по кадру.
+4. Перетащить концы, задать направления и `use_point`.
+5. «Сохранить».
+
+Колесо мыши — zoom к курсору, средняя кнопка — pan, Esc — отмена.
+
+### Настройка линий (CLI)
+
+Для CLI-режима линии задаются в `config.py`, параметр `VIRTUAL_LINES`:
 
 ```python
 VIRTUAL_LINES = [
@@ -252,31 +245,19 @@ VIRTUAL_LINES = [
 ]
 ```
 
-- `coords` — координаты отрезка в пикселях кадра.
-- `direction_pos_to_neg` — как называть переход «слева направо»
-  относительно направленного отрезка `(x1,y1)→(x2,y2)`.
-- `use_point` — какая точка трека используется для проверки
-  пересечения: `bottom_center` (по умолчанию, «под ногами») или
-  `center`.
-
-Несколько линий — просто добавьте элементы в список. Счётчики
-ведутся отдельно по каждой `line_id`.
+- `coords` — координаты отрезка в пикселях кадра;
+- `direction_pos_to_neg` / `direction_neg_to_pos` — как называть
+  переход через линию в каждом направлении;
+- `use_point` — какая точка трека используется для проверки:
+  `bottom_center` (по умолчанию, «под ногами») или `center`.
 
 ### Форматы отчётов
 
-**JSON** (`output/report.json`) — агрегаты + события, удобно
-парсить.
-
-**CSV** (`output/events.csv`) — построчный лог:
-
-```
-frame_idx,timestamp,track_id,line_id,direction,px,py
-87,3.480,12,line_main,in,980.5,780.2
-```
-
-**PNG** (`output/intensity.png`) — столбики по окнам; размер окна
-подбирается автоматически (1, 2, 5, 10, …, 600 с) так, чтобы
-получилось ~10 столбиков.
+- **JSON** — агрегаты + полный список событий;
+- **CSV** — построчный лог пересечений (`frame_idx, timestamp,
+  track_id, line_id, direction, px, py`);
+- **PNG** — график интенсивности, размер окна подбирается
+  автоматически.
 
 ---
 
@@ -321,41 +302,48 @@ frame_idx,timestamp,track_id,line_id,direction,px,py
 ## Архитектура
 
 ```
-[Источник видео]                   [Сервер обработки]
- RTSP / файл ──► Video Capture ──► Детектор (YOLOv8)
-                                          │
+┌──────────────┐     HTTP/WS       ┌──────────────────────────┐
+│  Vue 3 SPA   │ ────────────────► │  FastAPI                 │
+│  (frontend/) │                   │  /api/jobs  /api/streams │
+└──────────────┘                   │  /api/lines /api/uploads │
+                                   │  /ws/streams/{id}        │
+                                   └──────────┬───────────────┘
+                                              │
+                          ┌───────────────────┴───────────────────┐
+                          ▼                                       ▼
+                  ┌───────────────┐                    ┌────────────────────┐
+                  │  JobRunner    │                    │  StreamManager     │
+                  │  ProcessPool  │                    │  process-per-stream│
+                  └───────┬───────┘                    └─────────┬──────────┘
+                          └───────────────┬──────────────────────┘
                                           ▼
-                                   Трекер (ByteTrack)
-                                          │
-                                          ▼
-                                   Модуль подсчёта (линии)
-                                          │
-                         ┌────────────────┴───────────────┐
-                         ▼                                ▼
-                   Визуализация (CV2)                 API / JSON
-                   (annotated video)                 (результаты)
+                              ┌──────────────────────┐
+                              │  Core (pipeline)     │
+                              │  Source → YOLO →     │
+                              │  ByteTrack → Counter │
+                              └──────────────────────┘
 ```
 
-**Контракт между слоями** — `tracking.types.Track`. Любой трекер
-(ByteTrack, DeepSORT, botsort) приводится к этому виду в
-`pipeline.results_to_tracks`.
+**Общий контракт между слоями** — `tracking.types.Track`. Любой
+трекер (ByteTrack, DeepSORT, botsort) приводится к этому виду
+в `core/detector.py`.
 
 ---
 
 ## Требования
 
-### Минимальные (CPU-only, offline-обработка)
+### Минимальные (CPU-only)
 
 | Ресурс | Значение |
 |--------|----------|
 | CPU    | Intel i5 / Ryzen 5 |
 | RAM    | 16 GB |
-| Диск   | 20 GB (видео + модели) |
+| Диск   | 20 GB |
 | Python | 3.10+ |
+| Node.js| 20.19+ / 22.12+ (для сборки frontend) |
 | OS     | Linux / macOS / Windows (WSL2) |
 
-Ожидаемая скорость: **5–10 FPS** на `yolov8n` + ByteTrack на
-современном CPU.
+Ожидаемая скорость: **5–10 FPS** на `yolov8n` + ByteTrack.
 
 ### Рекомендуемые (real-time)
 
@@ -367,39 +355,41 @@ frame_idx,timestamp,track_id,line_id,direction,px,py
 
 Ожидаемая скорость: **30+ FPS** на `yolov8m`.
 
-### Зависимости Python
+### Системные зависимости
 
-См. `requirements.txt`, основные:
+- **ffmpeg** в `PATH` — перекодировка `annotated.mp4` в H.264,
+  иначе браузер не воспроизводит результат.
+- **MediaMTX** — опционально, для демо RTSP.
 
-```
-ultralytics>=8.2.0
-opencv-python>=4.9.0
-numpy>=1.26
-matplotlib>=3.8
-```
+### Python-зависимости
+
+См. `requirements.txt`, основные: `ultralytics`, `opencv-python`,
+`numpy`, `matplotlib`, `fastapi`, `uvicorn`, `pydantic`.
 
 ---
 
 ## Известные ограничения
 
-- **`OPENCV_FFMPEG_CAPTURE_OPTIONS` — глобальная env-переменная.**
-  `RTSPSource` выставляет её (TCP-транспорт + `stimeout`) перед созданием
-  `cv2.VideoCapture`. Это влияет на все `cv2.VideoCapture` в процессе.
-  Сейчас не проблема (один RTSP на процесс), но при переходе на
-  многопоточный Stream Manager с несколькими RTSP потребуется замена
-  на FFmpeg-pipeline-строку.
+- **Координаты линий — в пикселях исходного кадра.** При смене
+  разрешения видео конфиг нужно пересчитывать. Редактор линий
+  хранит `frame_width`/`frame_height` в конфиге, но автоматического
+  масштабирования пока нет.
+
+- **Один активный Stream-воркер на процесс.** StreamManager
+  изолирует YOLO в отдельном процессе на каждый поток. Несколько
+  параллельных RTSP-сессий возможны, но каждая занимает свой
+  процесс и свою копию модели.
+
+- **`OPENCV_FFMPEG_CAPTURE_OPTIONS` — глобальная переменная.**
+  `RTSPSource` выставляет её перед созданием `cv2.VideoCapture`.
+  При переходе на несколько RTSP в одном процессе потребуется
+  замена на FFmpeg-pipeline-строку.
 
 - **`pipeline.py` на live-источнике не завершается сам.**
-  Остановка — `Ctrl+C` (через `SIGINT`-handler выставляется `stop_event`).
-  Управляемая остановка появится в веб-бэкенде.
+  Остановка — `Ctrl+C`. Управляемая остановка — через веб-интерфейс
+  (`/stream` → «Остановить»).
 
-- **Координаты линий — в пикселях исходного кадра.**
-  При смене разрешения видео конфиг линий нужно пересчитывать вручную.
-  В веб-редакторе это будет автоматизировано.
-
-- **Тесты отсутствуют.**
-  Пока проект в демо-статусе, проверка — ручная, на коротких фрагментах
-  с разными ракурсами.
+- **Аутентификации нет.** Демо рассчитано на localhost.
 
 ---
 
@@ -413,20 +403,14 @@ matplotlib>=3.8
 pytest -q
 ```
 
-Ручная проверка — на 5–10-секундных фрагментах с разными ракурсами.
-
 ---
 
 ## Как вносить изменения
 
-1. Форкните репозиторий.
-2. Создайте ветку: `git checkout -b feature/my-feature`.
-3. Соблюдайте [Contributor Covenant](https://www.contributor-covenant.org/).
-4. Перед PR прогоните `python pipeline.py` на тестовом видео.
-5. В PR опишите: что меняется, зачем, как проверяли.
-
-Правила сообщества — см.
-[setting guidelines for repository contributors](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors).
+1. Форк и ветка: `git checkout -b feature/my-feature`.
+2. Соблюдать [Contributor Covenant](https://www.contributor-covenant.org/).
+3. Перед PR прогнать `python pipeline.py` на тестовом видео.
+4. В PR описать: что меняется, зачем, как проверяли.
 
 ---
 
@@ -445,9 +429,10 @@ MIT License. См. файл [LICENSE](LICENSE).
 
 ## Благодарности
 
-- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) — детекция и встроенные трекеры.
+- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) —
+  детекция и встроенные трекеры.
 - [ByteTrack](https://github.com/ifzhang/ByteTrack) — алгоритм трекинга.
 - [OpenCV](https://opencv.org/) — видео I/O и визуализация.
-- [MOT17](https://motchallenge.net/data/MOT17/) — тестовые данные (+адаптер в `sources/mot17_source.py`).
-- [Choose a License](https://choosealicense.com/) — за помощь с выбором лицензии.
-- [Shields.io](https://shields.io) — за бейджи.
+- [MediaMTX](https://github.com/bluenviron/mediamtx) — RTSP-сервер
+  для демо.
+- [MOT17](https://motchallenge.net/data/MOT17/) — тестовые данные.
