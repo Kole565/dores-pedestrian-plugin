@@ -265,35 +265,33 @@ VIRTUAL_LINES = [
 
 ```
 .
-├── pipeline.py              # точка входа
-├── config.py                # все настройки
+├── app/                     # FastAPI backend
+│   ├── main.py              # сборка приложения
+│   ├── routers/             # jobs, lines, streams, uploads
+│   ├── jobs.py              # JobRunner (offline, ProcessPool)
+│   ├── streams.py           # StreamManager (real-time, process-per-stream)
+│   ├── store.py             # JSON-хранилище задач
+│   ├── lines_store.py       # JSON-хранилище конфигов линий
+│   └── ...
+├── core/                    # ядро пайплайна
+│   ├── runner.py            # run_offline / run_stream
+│   ├── detector.py          # обёртка YOLO
+│   ├── lines.py             # сериализация линий
+│   └── config.py            # гиперпараметры
 ├── sources/                 # источники видео
-│   ├── base.py              # Protocol VideoSource
 │   ├── file_source.py
-│   ├── mot17_source.py      # Mot17Source dataset
-│   ├── rtsp_source.py       # RTSPSource (reconnect, backoff, stale-check)
+│   ├── rtsp_source.py       # с reconnect/backoff
+│   ├── mot17_source.py
 │   └── factory.py
-├── counting/                # логика подсчёта пересечений
-│   ├── counter.py
-│   ├── factory.py
-│   ├── geometry.py
-│   └── types.py
-├── tracking/
-│   └── types.py             # Track — контракт между детекцией и подсчётом
-├── reporting/
-│   ├── report.py            # ReportBuilder + экспорт JSON/CSV
-│   ├── plot.py              # график интенсивности
-│   ├── video_writer.py      # AnnotatedVideoWriter
-│   └── visualizer.py        # FrameVisualizer
-├── tools/
-│   └── video_to_rtsp.py     # dev-утилита: файл → RTSP (ffmpeg)
-├── scripts/
-│   └── serve_rtsp.sh
-├── input/                   # сюда класть видео
-├── output/                  # сюда пишутся результаты
-├── models/                  # сюда скачиваются веса YOLO
-├── Makefile
-├── requirements.txt
+├── counting/                # подсчёт пересечений
+├── tracking/                # Track — контракт с детектором
+├── reporting/               # визуализация, JSON/CSV/PNG
+├── frontend/                # Vue 3 SPA
+├── tools/                   # dev-утилиты (video_to_rtsp)
+├── scripts/                 # run_server, run_frontend, serve_rtsp
+├── data/                    # runtime: uploads, results, *.json
+├── pipeline.py              # CLI-обёртка над core.runner
+├── config.py                # CLI-настройки + реэкспорт core.config
 └── README.md
 ```
 
