@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getLimits } from '@/api/lines'
+import { getLimits } from '@/api/system'
 import { extractError } from '@/api/client'
 import type { LimitsResponse } from '@/api/types'
 

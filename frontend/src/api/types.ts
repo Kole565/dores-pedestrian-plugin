@@ -40,24 +40,6 @@ export interface LimitsResponse {
   allowed_video_ext: string[]
 }
 
-export interface LinesConfig {
-  id: string
-  name: string
-  lines: Array<{
-    line_id: string
-    coords: [number, number, number, number]
-    direction_pos_to_neg: string
-    direction_neg_to_pos: string
-    use_point: string
-  }>
-  created_at: string
-  updated_at: string
-}
-
-export interface LinesConfigListResponse {
-  configs: LinesConfig[]
-}
-
 // ---------------------------------------------------------------------------
 // Streams
 // ---------------------------------------------------------------------------
@@ -94,3 +76,41 @@ export interface StreamCreate {
   lines_config_id?: string | null
   lines_config?: Record<string, unknown> | null
 }
+
+// ---------------------------------------------------------------------------
+// Lines
+// ---------------------------------------------------------------------------
+
+export type Direction = 'in' | 'out' | 'left' | 'right' | 'unknown'
+export type UsePoint = 'center' | 'bottom_center'
+
+export interface Line {
+  line_id: string
+  coords: [number, number, number, number]
+  direction_pos_to_neg: Direction
+  direction_neg_to_pos: Direction
+  use_point: UsePoint
+}
+
+export interface LinesConfig {
+  id: string
+  name: string
+  frame_width?: number | null
+  frame_height?: number | null
+  lines: Line[]
+  created_at: string
+  updated_at: string
+}
+
+export interface LinesConfigCreate {
+  name: string
+  frame_width?: number | null
+  frame_height?: number | null
+  lines: Line[]
+}
+
+export interface LinesConfigListResponse {
+  configs: LinesConfig[]
+}
+
+export type FrameSourceKind = 'upload' | 'stream'
