@@ -48,7 +48,7 @@ class RunResult:
     intensity_png: Optional[str] = None
 
 
-# Колбэки для real-time (этап E подключит к WS)
+# Колбэки для real-time
 FrameCallback = Callable[[np.ndarray, int, float], None]
 StatsCallback = Callable[[CountingStats, float, int, int], None]
 StopCheck = Callable[[], bool]
@@ -182,7 +182,7 @@ def run_offline(
 
 
 # ---------------------------------------------------------------------------
-# Real-time (заготовка под этап E)
+# Real-time
 # ---------------------------------------------------------------------------
 
 def run_stream(
