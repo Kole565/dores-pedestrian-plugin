@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useJobsStore } from '@/stores/jobs'
 import { usePolling } from '@/composables/usePolling'
+import { deleteJob } from '@/api/jobs'
 import ErrorBanner from '@/components/ErrorBanner.vue'
 import Spinner from '@/components/Spinner.vue'
 
@@ -35,15 +36,23 @@ function progressPct(job: { progress: { frames_done: number; frames_total: numbe
     ? Math.round((100 * job.progress.frames_done) / job.progress.frames_total)
     : 0
 }
+
+async function onDelete(id: string) {
+  if (!confirm('Удалить задачу?')) return
+  try {
+    await deleteJob(id)
+    store.refresh()
+  } catch (e) {
+    /* показать error */
+  }
+}
 </script>
 
 <template>
   <div>
     <div class="row between" style="margin-bottom: 16px">
       <h1 style="margin: 0">Обзор</h1>
-      <RouterLink to="/upload">
-        <button class="primary">+ Загрузить видео</button>
-      </RouterLink>
+      <RouterLink to="/upload" class="btn primary">+ Загрузить видео</RouterLink>
     </div>
 
     <ErrorBanner v-if="error" :message="error" />
@@ -90,6 +99,12 @@ function progressPct(job: { progress: { frames_done: number; frames_total: numbe
             <td class="muted">{{ fmtDate(job.created_at) }}</td>
             <td>
               <RouterLink :to="`/jobs/${job.id}`">Открыть</RouterLink>
+              <button
+                v-if="job.status !== 'running'"
+                class="danger"
+                style="padding: 2px 8px; font-size: 11px; margin-left: 8px"
+                @click="onDelete(job.id)"
+              >✕</button>
             </td>
           </tr>
         </tbody>

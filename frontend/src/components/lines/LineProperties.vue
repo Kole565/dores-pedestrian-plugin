@@ -69,9 +69,16 @@ function update<K extends keyof Line>(key: K, value: Line[K]) {
       >
         <option v-for="p in USE_POINTS" :key="p" :value="p">{{ p }}</option>
       </select>
+
       <div class="hint muted" style="margin-top: 4px">
-        bottom_center — «под ногами», стабильнее на уличных камерах
+        <template v-if="line.use_point === 'bottom_center'">
+          bottom_center — «под ногами», стабильнее на уличных камерах
+        </template>
+        <template v-else>
+          center — центр bbox, лучше для линий на уровне корпуса
+        </template>
       </div>
+
     </div>
 
     <button class="danger" style="margin-top: 8px" @click="emit('delete')">

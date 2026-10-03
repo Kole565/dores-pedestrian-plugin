@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import { getJob, jobFileUrl, jobResultUrl } from '@/api/jobs'
+import { RouterLink, useRouter } from 'vue-router'
+import { getJob, deleteJob, jobFileUrl, jobResultUrl } from '@/api/jobs'
 import { extractError } from '@/api/client'
 import ErrorBanner from '@/components/ErrorBanner.vue'
 import Spinner from '@/components/Spinner.vue'
 import type { JobInfo } from '@/api/types'
 
 const props = defineProps<{ id: string }>()
+const router = useRouter()
 
 const job = ref<JobInfo | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const deleting = ref(false)
 
 let timer: number | null = null
 
@@ -26,13 +28,15 @@ const STATUS_LABEL: Record<string, string> = {
 const isTerminal = computed(() =>
   job.value?.status === 'done' ||
   job.value?.status === 'failed' ||
-  job.value?.status === 'cancelled'
+  job.value?.status === 'cancelled',
 )
 
 const progressPct = computed(() =>
   job.value && job.value.progress.frames_total > 0
-    ? Math.round((100 * job.value.progress.frames_done) / job.value.progress.frames_total)
-    : 0
+    ? Math.round(
+        (100 * job.value.progress.frames_done) / job.value.progress.frames_total,
+      )
+    : 0,
 )
 
 async function tick() {
@@ -49,6 +53,19 @@ async function tick() {
   }
 }
 
+async function onDelete() {
+  if (!job.value) return
+  if (!confirm(`Удалить задачу ${job.value.id}? Файлы будут стёрты с диска.`)) return
+  deleting.value = true
+  try {
+    await deleteJob(job.value.id)
+    router.push('/')
+  } catch (e) {
+    error.value = extractError(e)
+    deleting.value = false
+  }
+}
+
 onMounted(tick)
 onUnmounted(() => {
   if (timer) window.clearTimeout(timer)
@@ -61,7 +78,18 @@ onUnmounted(() => {
       <h1 style="margin: 0">
         Задача <span class="mono">{{ id }}</span>
       </h1>
-      <RouterLink to="/"><button>← К обзору</button></RouterLink>
+      <div class="row">
+        <button
+          v-if="job"
+          class="danger"
+          :disabled="deleting || job.status === 'running'"
+          @click="onDelete"
+        >
+          <template v-if="deleting"><Spinner /> Удаление…</template>
+          <template v-else>Удалить</template>
+        </button>
+        <RouterLink to="/" class="btn">← К обзору</RouterLink>
+      </div>
     </div>
 
     <div v-if="loading" class="row">
@@ -95,7 +123,11 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <div v-if="job.error_message" class="error-banner" style="margin-top: 16px; white-space: pre-wrap">
+        <div
+          v-if="job.error_message"
+          class="error-banner"
+          style="margin-top: 16px; white-space: pre-wrap"
+        >
           {{ job.error_message }}
         </div>
       </div>
@@ -103,21 +135,31 @@ onUnmounted(() => {
       <div v-if="job.status === 'done'" class="card">
         <h2>Результаты</h2>
         <div class="row" style="flex-wrap: wrap; gap: 12px">
-          <a :href="jobResultUrl(job.id)">
-            <button class="primary">Скачать ZIP</button>
-          </a>
-          <a :href="jobFileUrl(job.id, 'annotated.mp4')" target="_blank" rel="noreferrer">
-            <button>Открыть видео</button>
-          </a>
-          <a :href="jobFileUrl(job.id, 'report.json')" target="_blank" rel="noreferrer">
-            <button>report.json</button>
-          </a>
-          <a :href="jobFileUrl(job.id, 'events.csv')" target="_blank" rel="noreferrer">
-            <button>events.csv</button>
-          </a>
-          <a :href="jobFileUrl(job.id, 'intensity.png')" target="_blank" rel="noreferrer">
-            <button>intensity.png</button>
-          </a>
+          <a class="btn primary" :href="jobResultUrl(job.id)">Скачать ZIP</a>
+          <a
+            class="btn"
+            :href="jobFileUrl(job.id, 'annotated.mp4')"
+            target="_blank"
+            rel="noreferrer"
+          >Открыть видео</a>
+          <a
+            class="btn"
+            :href="jobFileUrl(job.id, 'report.json')"
+            target="_blank"
+            rel="noreferrer"
+          >report.json</a>
+          <a
+            class="btn"
+            :href="jobFileUrl(job.id, 'events.csv')"
+            target="_blank"
+            rel="noreferrer"
+          >events.csv</a>
+          <a
+            class="btn"
+            :href="jobFileUrl(job.id, 'intensity.png')"
+            target="_blank"
+            rel="noreferrer"
+          >intensity.png</a>
         </div>
 
         <h3 style="margin-top: 24px">Предпросмотр</h3>

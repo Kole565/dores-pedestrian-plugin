@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Optional
 
 import cv2
+import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
-from ..deps import get_lines_store, get_manager, get_store
+from ..deps import get_lines_store, get_manager
 from ..lines_store import LinesStore
 from ..schemas import (
     FrameSource,
@@ -20,28 +21,73 @@ from ..schemas import (
     LinesConfigUpdate,
 )
 from ..settings import settings
-from ..store import JobStore
 from ..streams import StreamManager
 
 logger = logging.getLogger("app.lines")
 router = APIRouter(prefix="/api/lines", tags=["lines"])
 
-# ---------------------------------------------------------------------------
-# GET /api/lines/frame — подложка для редактора
-# ---------------------------------------------------------------------------
-
 _MAX_FRAME_WIDTH = 1920
 _JPEG_QUALITY = 85
 
 
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+def _find_upload_file(file_id: str) -> Optional[Path]:
+    """Ищет видеофайл по id.
+
+    Проверяет два варианта имени:
+      * {file_id}{ext}       — input offline-job'а
+      * up_{file_id}{ext}    — upload из /api/uploads
+    """
+    # локальный импорт — чтобы не создавать цикл routers.lines ↔ routers.uploads
+    from .uploads import UPLOAD_PREFIX
+
+    for ext in settings.allowed_video_ext:
+        for candidate in (
+            settings.uploads_dir / f"{file_id}{ext}",
+            settings.uploads_dir / f"{UPLOAD_PREFIX}{file_id}{ext}",
+        ):
+            if candidate.exists():
+                return candidate
+    return None
+
+
+def _read_frame(video_path: Path, t_sec: float):
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        return None
+    try:
+        if t_sec > 0:
+            cap.set(cv2.CAP_PROP_POS_MSEC, t_sec * 1000.0)
+        ok, frame = cap.read()
+        return frame if ok else None
+    finally:
+        cap.release()
+
+
+def _downscale_if_needed(frame):
+    h, w = frame.shape[:2]
+    if w <= _MAX_FRAME_WIDTH:
+        return frame
+    scale = _MAX_FRAME_WIDTH / w
+    new_size = (int(w * scale), int(h * scale))
+    return cv2.resize(frame, new_size, interpolation=cv2.INTER_AREA)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/lines/frame — подложка для редактора
+# ---------------------------------------------------------------------------
+
 @router.get("/frame")
 def get_frame(
     source: FrameSource = Query(..., description="upload или stream"),
-    id: str = Query(..., description="job_id или stream_id"),
+    id: str = Query(..., description="job_id / upload_id / stream_id"),
     t_sec: float = Query(0.0, ge=0.0, description="Секунда от начала (для upload)"),
-    jobs: JobStore = Depends(get_store),
     manager: StreamManager = Depends(get_manager),
 ) -> Response:
+    # --- stream: берём последний JPEG-снапшот ---
     if source == FrameSource.STREAM:
         session = manager.get(id)
         if session is None:
@@ -52,8 +98,7 @@ def get_frame(
                 status_code=409,
                 detail="Кадр ещё не получен (стрим только запускается?)",
             )
-        # размер кадра мы не знаем из JPEG без декодирования — декодируем
-        import numpy as np
+        # декодируем, чтобы узнать реальные размеры кадра
         arr = np.frombuffer(jpeg, dtype=np.uint8)
         frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         h, w = (frame.shape[:2] if frame is not None else (0, 0))
@@ -67,14 +112,13 @@ def get_frame(
             },
         )
 
-    # --- upload ---
-    job = jobs.get(id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job не найден")
-
+    # --- upload: id может быть job_id или upload_id ---
     video_path = _find_upload_file(id)
     if video_path is None:
-        raise HTTPException(status_code=404, detail="Видеофайл не найден на диске")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Видеофайл для id={id} не найден",
+        )
 
     frame = _read_frame(video_path, t_sec)
     if frame is None:
@@ -102,6 +146,7 @@ def get_frame(
             "Cache-Control": "no-store",
         },
     )
+
 
 # ---------------------------------------------------------------------------
 # CRUD
@@ -163,34 +208,3 @@ def delete_lines(
     if not store.delete(config_id):
         raise HTTPException(status_code=404, detail="Конфиг не найден")
     return None
-
-
-
-def _find_upload_file(job_id: str) -> Optional[Path]:
-    for ext in settings.allowed_video_ext:
-        p = settings.uploads_dir / f"{job_id}{ext}"
-        if p.exists():
-            return p
-    return None
-
-
-def _read_frame(video_path: Path, t_sec: float):
-    cap = cv2.VideoCapture(str(video_path))
-    if not cap.isOpened():
-        return None
-    try:
-        if t_sec > 0:
-            cap.set(cv2.CAP_PROP_POS_MSEC, t_sec * 1000.0)
-        ok, frame = cap.read()
-        return frame if ok else None
-    finally:
-        cap.release()
-
-
-def _downscale_if_needed(frame):
-    h, w = frame.shape[:2]
-    if w <= _MAX_FRAME_WIDTH:
-        return frame
-    scale = _MAX_FRAME_WIDTH / w
-    new_size = (int(w * scale), int(h * scale))
-    return cv2.resize(frame, new_size, interpolation=cv2.INTER_AREA)

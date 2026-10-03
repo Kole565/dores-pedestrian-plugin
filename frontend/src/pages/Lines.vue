@@ -116,6 +116,26 @@ async function onDeleteConfig(id: string) {
   }
 }
 
+async function onRenameConfig(id: string, newName: string) {
+  const cfg = configs.value.find((c) => c.id === id)
+  if (!cfg) return
+  try {
+    const updated = await updateLines(id, {
+      name: newName,
+      frame_width: cfg.frame_width ?? null,
+      frame_height: cfg.frame_height ?? null,
+      lines: cfg.lines,
+    })
+    configs.value = configs.value.map((c) => (c.id === id ? updated : c))
+    // если это выбранный конфиг — обновить editingName
+    if (selectedId.value === id) {
+      editingName.value = newName
+    }
+  } catch (e) {
+    error.value = extractError(e)
+  }
+}
+
 function onFrameChange(payload: {
   source: 'upload' | 'stream'
   id: string
@@ -268,6 +288,7 @@ function onAddClick() {
           :selected-id="selectedId"
           @select="selectConfig"
           @create="onCreateConfig"
+          @rename="onRenameConfig"
           @delete="onDeleteConfig"
         />
 
@@ -281,11 +302,8 @@ function onAddClick() {
       <section class="lines-canvas-wrap">
         <div class="row between" style="margin-bottom: 8px">
           <div class="row">
-            <input
-              v-model="editingName"
-              placeholder="Имя конфига"
-              style="width: 240px"
-            />
+            <span class="mono muted">{{ editingName }}</span>
+
             <button
               :class="{ primary: !drawing }"
               :disabled="!selectedId"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import type { LinesConfig } from '@/api/types'
 
 const props = defineProps<{
@@ -10,8 +10,35 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select', id: string): void
   (e: 'create', name: string): void
+  (e: 'rename', id: string, newName: string): void
   (e: 'delete', id: string): void
 }>()
+
+const editingId = ref<string | null>(null)
+const editingName = ref('')
+
+const inputRef = ref<HTMLInputElement | null>(null)
+
+function startRename(c: LinesConfig) {
+  editingId.value = c.id
+  editingName.value = c.name
+  nextTick(() => inputRef.value?.focus())
+}
+
+function commitRename() {
+  if (!editingId.value) return
+  const name = editingName.value.trim()
+  if (name) {
+    emit('rename', editingId.value, name)
+  }
+  editingId.value = null
+  editingName.value = ''
+}
+
+function cancelRename() {
+  editingId.value = null
+  editingName.value = ''
+}
 
 const newName = ref('')
 
@@ -50,26 +77,49 @@ function fmtDate(s: string): string {
     </div>
 
     <ul class="config-list">
+
       <li
         v-for="c in configs"
         :key="c.id"
         :class="{ active: c.id === selectedId }"
         @click="emit('select', c.id)"
       >
-        <div>
-          <div style="font-weight: 500">{{ c.name }}</div>
-          <div class="muted" style="font-size: 11px">
-            {{ c.lines.length }} лин. · {{ fmtDate(c.updated_at) }}
-          </div>
+        <div style="flex: 1; min-width: 0">
+          <template v-if="editingId === c.id">
+            <input
+              v-model="editingName"
+              @keyup.enter="commitRename"
+              @keyup.escape="cancelRename"
+              @blur="commitRename"
+              style="padding: 2px 6px; font-size: 13px"
+            />
+          </template>
+          <template v-else>
+            <div style="font-weight: 500; overflow: hidden; text-overflow: ellipsis">
+              {{ c.name }}
+            </div>
+            <div class="muted" style="font-size: 11px">
+              {{ c.lines.length }} лин. · {{ fmtDate(c.updated_at) }}
+            </div>
+          </template>
         </div>
-        <button
-          class="danger"
-          style="padding: 2px 8px; font-size: 11px"
-          @click.stop="emit('delete', c.id)"
-        >
-          ✕
-        </button>
+
+        <div class="row" style="gap: 4px; flex-shrink: 0">
+          <button
+            v-if="editingId !== c.id"
+            style="padding: 2px 6px; font-size: 11px"
+            title="Переименовать"
+            @click.stop="startRename(c)"
+          >✎</button>
+          <button
+            class="danger"
+            style="padding: 2px 6px; font-size: 11px"
+            title="Удалить"
+            @click.stop="emit('delete', c.id)"
+          >✕</button>
+        </div>
       </li>
+
     </ul>
   </div>
 </template>

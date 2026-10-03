@@ -114,3 +114,10 @@ export interface LinesConfigListResponse {
 }
 
 export type FrameSourceKind = 'upload' | 'stream'
+
+export interface UploadInfo {
+  id: string
+  filename: string
+  size_bytes: number
+  created_at: string
+}

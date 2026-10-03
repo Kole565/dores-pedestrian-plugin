@@ -166,6 +166,11 @@ class StreamCreate(BaseModel):
     # inline для тестов, приоритет как у jobs
     lines_config: Optional[dict] = None
 
-
 class StreamListResponse(BaseModel):
     streams: list[StreamInfo]
+
+class UploadInfo(BaseModel):
+    id: str
+    filename: str
+    size_bytes: int
+    created_at: datetime

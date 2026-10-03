@@ -21,6 +21,8 @@ from .routers import jobs as jobs_router
 from .routers import lines as lines_router
 from .routers import streams as streams_router
 
+from .routers import uploads as uploads_router
+
 
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
@@ -90,6 +92,7 @@ def create_app() -> FastAPI:
     app.include_router(jobs_router.router)
     app.include_router(lines_router.router)
     app.include_router(streams_router.router)
+    app.include_router(uploads_router.router)
     app.include_router(ws_module.router)
 
     return app

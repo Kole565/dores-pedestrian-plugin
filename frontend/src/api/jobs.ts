@@ -34,6 +34,10 @@ export async function getJob(id: string): Promise<JobInfo> {
   return data
 }
 
+export async function deleteJob(id: string): Promise<void> {
+  await api.delete(`/jobs/${id}`)
+}
+
 export function jobResultUrl(id: string): string {
   return `/api/jobs/${id}/result`
 }

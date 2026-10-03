@@ -56,6 +56,15 @@ button.danger {
   color: white;
 }
 
+button, a.btn {
+  min-height: 36px;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 input, select, textarea {
   font: inherit;
   padding: 8px 12px;
@@ -68,6 +77,30 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
+}
+
+a.btn {
+  font: inherit;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+a.btn:hover { background: #475569; text-decoration: none; }
+a.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+a.btn.primary:hover { background: var(--accent-hover); }
+a.btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
 }
 
 .app-shell {
@@ -199,8 +232,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
+  border: 2px solid currentColor;
+  border-top-color: transparent;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
