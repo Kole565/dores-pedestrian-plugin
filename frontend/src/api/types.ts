@@ -57,3 +57,40 @@ export interface LinesConfig {
 export interface LinesConfigListResponse {
   configs: LinesConfig[]
 }
+
+// ---------------------------------------------------------------------------
+// Streams
+// ---------------------------------------------------------------------------
+
+export type StreamStatus = 'starting' | 'running' | 'stopped' | 'error'
+
+export interface StreamStats {
+  total: number
+  per_line: Record<string, Record<string, number>>
+  fps: number
+  active_tracks: number
+  frames_processed: number
+}
+
+export interface StreamInfo {
+  id: string
+  status: StreamStatus
+  rtsp_url_masked: string
+  lines_config_id?: string | null
+  created_at: string
+  started_at?: string | null
+  stopped_at?: string | null
+  last_frame_at?: string | null
+  stats: StreamStats
+  error_message?: string | null
+}
+
+export interface StreamListResponse {
+  streams: StreamInfo[]
+}
+
+export interface StreamCreate {
+  rtsp_url: string
+  lines_config_id?: string | null
+  lines_config?: Record<string, unknown> | null
+}
