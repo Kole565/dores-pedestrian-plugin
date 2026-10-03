@@ -1,3 +1,4 @@
+
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-orange)
@@ -34,7 +35,7 @@
 - [Требования](#требования)
 - [Известные ограничения](#известные-ограничения)
 - [Тесты](#тесты)
-- [Как контрибьютить](#как-контрибьютить)
+- [Как вносить изменения](#как-вносить-изменения)
 - [Авторы](#авторы)
 - [Лицензия](#лицензия)
 - [Благодарности](#благодарности)
@@ -82,6 +83,8 @@
 ---
 
 ## Демо
+
+https://github.com/user-attachments/assets/1fe469c5-878e-499f-9707-c0131b8f3bfb
 
 После запуска в `output/` появятся:
 
@@ -167,7 +170,7 @@ pip install -r requirements.txt
 cp /path/to/your/video.mp4 input/
 
 # 5. Запустить
-python pipeline.py
+python pipeline.py --input ./input/video.mp4 --output-dir ./output
 ```
 
 Результаты — в `output/`.
@@ -227,20 +230,13 @@ INPUT_VIDEO = "rtsp://localhost:8554/live"
 python pipeline.py
 ```
 
-Что увидите:
-
-HUD печатает Frame N (live) — счётчик кадров не имеет верхней границы;
-
-если публикация прервётся, RTSPSource сам переподключится
-с экспоненциальным backoff (в лог пойдут RTSP stale... reconnect);
-
-остановка — Ctrl+C (мягкая, через stop_event).
-
 ---
 
 ## Использование
 
 ### Настройка виртуальных линий
+
+Виртуальные линии позволяют собирать данные о прохождениях людей между определёнными участками местности.
 
 Всё в `config.py`. Ключевой параметр — `VIRTUAL_LINES`:
 
@@ -421,7 +417,7 @@ pytest -q
 
 ---
 
-## Как контрибьютить
+## Как вносить изменения
 
 1. Форкните репозиторий.
 2. Создайте ветку: `git checkout -b feature/my-feature`.
