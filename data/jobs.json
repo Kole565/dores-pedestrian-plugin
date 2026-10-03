@@ -1,43 +1,22 @@
 {
-  "54c55d7e2ae1": {
-    "id": "54c55d7e2ae1",
+  "bc42cbbbabb0": {
+    "id": "bc42cbbbabb0",
     "status": "done",
-    "created_at": "2026-10-02T22:39:26.538315",
-    "started_at": "2026-10-02T22:39:26.538646",
-    "finished_at": "2026-10-02T22:39:51.705902",
-    "input_filename": "mot17_02.mp4",
-    "lines_config_id": null,
-    "progress": {
-      "frames_done": 600,
-      "frames_total": 600,
-      "fps_avg": 24.34
-    },
-    "result": {
-      "output_video": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/annotated.mp4",
-      "report_json": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/report.json",
-      "events_csv": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/events.csv",
-      "intensity_png": "/home/kole/dev/dores_integration/data/results/54c55d7e2ae1/intensity.png"
-    },
-    "error_message": null
-  },
-  "dda9102682d2": {
-    "id": "dda9102682d2",
-    "status": "done",
-    "created_at": "2026-10-02T22:59:56.355907",
-    "started_at": "2026-10-02T22:59:56.356353",
-    "finished_at": "2026-10-02T23:00:22.426501",
+    "created_at": "2026-10-03T00:27:21.459855",
+    "started_at": "2026-10-03T00:27:21.460179",
+    "finished_at": "2026-10-03T00:27:47.554696",
     "input_filename": "sample.mp4",
-    "lines_config_id": "6d5f882aea5e",
+    "lines_config_id": "01280662cd6c",
     "progress": {
       "frames_done": 600,
       "frames_total": 600,
-      "fps_avg": 23.41
+      "fps_avg": 23.56
     },
     "result": {
-      "output_video": "/home/kole/dev/dores_integration/data/results/dda9102682d2/annotated.mp4",
-      "report_json": "/home/kole/dev/dores_integration/data/results/dda9102682d2/report.json",
-      "events_csv": "/home/kole/dev/dores_integration/data/results/dda9102682d2/events.csv",
-      "intensity_png": "/home/kole/dev/dores_integration/data/results/dda9102682d2/intensity.png"
+      "output_video": "/home/kole/dev/dores_integration/data/results/bc42cbbbabb0/annotated.mp4",
+      "report_json": "/home/kole/dev/dores_integration/data/results/bc42cbbbabb0/report.json",
+      "events_csv": "/home/kole/dev/dores_integration/data/results/bc42cbbbabb0/events.csv",
+      "intensity_png": "/home/kole/dev/dores_integration/data/results/bc42cbbbabb0/intensity.png"
     },
     "error_message": null
   }

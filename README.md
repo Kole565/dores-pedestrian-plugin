@@ -309,8 +309,7 @@ frame_idx,timestamp,track_id,line_id,direction,px,py
 │   ├── video_writer.py      # AnnotatedVideoWriter
 │   └── visualizer.py        # FrameVisualizer
 ├── tools/
-│   ├── video_to_rtsp.py     # dev-утилита: файл → RTSP (ffmpeg)
-│   └── mot17_source.py      # DEPRECATED: переехал в sources/mot17_source.py адаптер для MOT17-последовательности
+│   └── video_to_rtsp.py     # dev-утилита: файл → RTSP (ffmpeg)
 ├── scripts/
 │   └── serve_rtsp.sh
 ├── input/                   # сюда класть видео
@@ -453,6 +452,6 @@ MIT License. См. файл [LICENSE](LICENSE).
 - [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) — детекция и встроенные трекеры.
 - [ByteTrack](https://github.com/ifzhang/ByteTrack) — алгоритм трекинга.
 - [OpenCV](https://opencv.org/) — видео I/O и визуализация.
-- [MOT17](https://motchallenge.net/data/MOT17/) — тестовые данные (+адаптер в `tools/mot17_source.py`).
+- [MOT17](https://motchallenge.net/data/MOT17/) — тестовые данные (+адаптер в `sources/mot17_source.py`).
 - [Choose a License](https://choosealicense.com/) — за помощь с выбором лицензии.
 - [Shields.io](https://shields.io) — за бейджи.

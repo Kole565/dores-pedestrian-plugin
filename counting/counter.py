@@ -96,10 +96,10 @@ class LineCounter:
         new_events: List[LineCrossingEvent] = []
 
         for track in tracks:
-            point = self._reference_point(track)
-            self._update_track(track.track_id, frame_idx, point)
+            self._update_track(track.track_id, frame_idx, track.bottom_center)
 
             for line in self.lines:
+                point = line.point_for(track)
                 ev = self._check_crossing(track, line, frame_idx, timestamp, point)
                 if ev is not None:
                     new_events.append(ev)
@@ -122,11 +122,6 @@ class LineCounter:
 
     # ------------------------------------------------------------- internals
 
-    def _reference_point(self, track: Track) -> Tuple[float, float]:
-        # точка для проверки пересечения: bottom_center обычно точнее
-        x1, _, x2, y2 = track.bbox
-        return ((x1 + x2) / 2.0, y2)
-
     def _update_track(
         self,
         track_id: int,
@@ -136,6 +131,7 @@ class LineCounter:
         hist = self._history.setdefault(track_id, deque(maxlen=self.history_size))
         hist.append((frame_idx, point))
         self._last_seen[track_id] = frame_idx
+
 
     def _reap_dead_tracks(self, frame_idx: int) -> None:
         dead = [
@@ -147,6 +143,12 @@ class LineCounter:
             self._last_seen.pop(tid, None)
             for key in [k for k in self._last_side if k[0] == tid]:
                 self._last_side.pop(key, None)
+
+        # чистим анти-дребезг: запись бесполезна, если старше окна
+        ttl = self.max_missing_frames
+        stale = [k for k, f in self._counted.items() if frame_idx - f > ttl]
+        for k in stale:
+            self._counted.pop(k, None)
 
     def _check_crossing(
         self,

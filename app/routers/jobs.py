@@ -6,6 +6,7 @@ import logging
 import shutil
 import uuid
 import zipfile
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -59,6 +60,45 @@ def _job_output_dir(job_id: str) -> Path:
 def _job_input_path(job_id: str, ext: str) -> Path:
     return settings.uploads_dir / f"{job_id}{ext}"
 
+def _ensure_web_playable(job_id: str) -> Path | None:
+    """Гарантирует наличие annotated_web.mp4 (H.264, faststart) для <video>.
+
+    cv2.VideoWriter с fourcc='mp4v' (MPEG-4 Part 2) браузеры не играют.
+    Перекодируем в H.264 лениво, при первом запросе файла.
+    """
+    src = _job_output_dir(job_id) / "annotated.mp4"
+    if not src.exists():
+        return None
+
+    dst = _job_output_dir(job_id) / "annotated_web.mp4"
+    if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+        return dst
+
+    if shutil.which("ffmpeg") is None:
+        logger.warning(
+            "ffmpeg не найден в PATH — annotated.mp4 останется в mp4v "
+            "и не будет играть в браузере"
+        )
+        return None
+
+    cmd = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(src),
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        "-an",
+        str(dst),
+    ]
+    try:
+        subprocess.run(cmd, check=True, timeout=600)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        logger.exception("ffmpeg перекодировка не удалась: %s", exc)
+        dst.unlink(missing_ok=True)
+        return None
+    return dst
 
 # ---------------------------------------------------------------------------
 # POST /api/jobs — upload + submit
@@ -262,7 +302,7 @@ def get_job_result(
     if not zip_path.exists() or zip_path.stat().st_mtime < _latest_mtime(out_dir):
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for p in sorted(out_dir.rglob("*")):
-                if p.is_file():
+                if p.is_file() and not p.name.endswith("_web.mp4"):
                     zf.write(p, arcname=p.relative_to(out_dir))
 
     return FileResponse(
@@ -306,12 +346,32 @@ def get_job_file(
     if name not in _ALLOWED_ARTIFACTS:
         raise HTTPException(status_code=404, detail="Артефакт не найден")
 
+    # --- специальный случай: видео → web-версия H.264 ---
+    if name == "annotated.mp4":
+        web = _ensure_web_playable(job_id)
+        if web is not None:
+            return FileResponse(
+                web,
+                media_type="video/mp4",
+                filename="annotated.mp4",
+                headers={"Accept-Ranges": "bytes"},
+            )
+        # ffmpeg недоступен — отдаём как есть, но хотя бы с правильным
+        # content-type, чтобы браузер не путался
+        logger.warning(
+            "Отдаём annotated.mp4 без перекодировки — в браузере не заиграет"
+        )
+
     path = _job_output_dir(job_id) / name
     if not path.exists():
         raise HTTPException(status_code=404, detail="Файл отсутствует на диске")
 
-    return FileResponse(path, media_type=_ALLOWED_ARTIFACTS[name], filename=name)
-
+    return FileResponse(
+        path,
+        media_type=_ALLOWED_ARTIFACTS[name],
+        filename=name,
+        headers={"Accept-Ranges": "bytes"} if name.endswith(".mp4") else None,
+    )
 
 # ---------------------------------------------------------------------------
 # DELETE /api/jobs/{id}
