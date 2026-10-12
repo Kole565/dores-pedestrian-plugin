@@ -157,6 +157,7 @@ cd dores-pedestrian-plugin
 # 2. Виртуальное окружение и зависимости backend
 python3.10 -m venv .venv
 source .venv/bin/activate
+pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 pip install -r requirements.txt
 
 # 3. Зависимости frontend
@@ -239,7 +240,7 @@ python pipeline.py --input ./input/video.mp4 --output-dir ./output
 
 ### Настройка линий (CLI)
 
-Для CLI-режима линии задаются в `config.py`, параметр `VIRTUAL_LINES`:
+Линии могут также быть заданы в `config.py`, параметр `VIRTUAL_LINES`:
 
 ```python
 VIRTUAL_LINES = [
